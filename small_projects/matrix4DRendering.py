@@ -45,7 +45,7 @@ tesseract = [{
         ],
     
     # Pivot point
-    "pivot": (0, 0, 0, 0),
+    "pivot": np.array([[0], [0], [0], [0], [1]], dtype=float),
     
     # Tesseract edges
     "edges": [
@@ -91,9 +91,9 @@ tesseract = [{
 
 def calculate_position_with_matrix(inputObect, transformation_matrix):
     
-    # Apply the transformation matrix pivot to the pivot point
-    pivot = np.array([[inputObect["pivot"][0]], [inputObect["pivot"][1]], [inputObect["pivot"][2]], [inputObect["pivot"][3]], [1]])
-    transformed_pivot = transformation_matrix @ pivot
+    # Apply the transformation matrix to the pivot point.
+    # Recompute it from the transformed vertices so it stays centered on the object.
+    transformed_pivot = transformation_matrix @ inputObect["pivot"]
     
     # Apply the transformation matrix to each vertex
     transformed_vertices = []
@@ -101,8 +101,11 @@ def calculate_position_with_matrix(inputObect, transformation_matrix):
         transformed_vertex = transformation_matrix @ vertex
         transformed_vertices.append(transformed_vertex)
     
+    #transformed_pivot = sum(transformed_vertices) / len(transformed_vertices)
+    #transformed_pivot[4][0] = 1
     
-    return transformed_vertices, (transformed_pivot[0][0], transformed_pivot[1][0], transformed_pivot[2][0], transformed_pivot[3][0])
+    
+    return transformed_vertices, transformed_pivot
 
 
 
@@ -129,6 +132,7 @@ def moveObject(key):
         s = .01
     else:
         s = .1
+    # Movement:
     # Movement y
     if key[pygame.K_c]:
         total_movement_matrix[1][4] -= s  # Move down in y-axis
@@ -152,6 +156,85 @@ def moveObject(key):
     # Random movement for testing
     if key[pygame.K_p]:
         total_movement_matrix[random.randint(0, 4)][4] += random.uniform(-s, s) # Move randomly in x, y, or z-axis
+        
+    # Rotation:
+    angle = s / 10  # Rotation angle in radians, scaled down for smoother rotation
+    if key[pygame.K_KP_8]:
+        # Rotate around x-axis
+        rotation_matrix = np.array([[1, 0, 0, 0, 0],
+                                    [0, math.cos(angle), -math.sin(angle), 0, 0],
+                                    [0, math.sin(angle), math.cos(angle), 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_2]:
+        # Rotate around x-axis in the opposite direction
+        rotation_matrix = np.array([[1, 0, 0, 0, 0],
+                                    [0, math.cos(-angle), -math.sin(-angle), 0, 0],
+                                    [0, math.sin(-angle), math.cos(-angle), 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_4]:
+        # Rotate around y-axis
+        rotation_matrix = np.array([[math.cos(angle), 0, math.sin(angle), 0, 0],
+                                    [0, 1, 0, 0, 0],
+                                    [-math.sin(angle), 0, math.cos(angle), 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_6]:
+        # Rotate around y-axis in the opposite direction
+        rotation_matrix = np.array([[math.cos(-angle), 0, math.sin(-angle), 0, 0],
+                                    [0, 1, 0, 0, 0],
+                                    [-math.sin(-angle), 0, math.cos(-angle), 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_7]:
+        # Rotate around z-axis
+        rotation_matrix = np.array([[math.cos(angle), -math.sin(angle), 0, 0, 0],
+                                    [math.sin(angle), math.cos(angle), 0, 0, 0],
+                                    [0, 0, 1, 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_9]:
+        # Rotate around z-axis in the opposite direction
+        rotation_matrix = np.array([[math.cos(-angle), -math.sin(-angle), 0, 0, 0],
+                                    [math.sin(-angle), math.cos(-angle), 0, 0, 0],
+                                    [0, 0, 1, 0, 0],
+                                    [0, 0, 0, 1, 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_1]:
+        # Roate around w-axis
+        rotation_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
+                                    [0, 1, 0, 0, 0],
+                                    [0, 0, 1, 0, 0],
+                                    [math.sin(angle), 0, 0, math.cos(angle), 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_3]:
+        # Rotate around w-axis in the opposite direction
+        rotation_matrix = np.array([[math.cos(-angle), 0, 0, -math.sin(-angle), 0],
+                                    [0, 1, 0, 0, 0],
+                                    [0, 0, 1, 0, 0],
+                                    [math.sin(-angle), 0, 0, math.cos(-angle), 0],
+                                    [0, 0, 0, 0, 1]],
+                                   dtype=float)
+        total_movement_matrix = rotation_matrix @ total_movement_matrix
+    if key[pygame.K_KP_5]:
+        pass
+    
+    # Extra keys
     if key[pygame.K_ESCAPE]:
         pygame.quit()
         sys.exit()  # Quits Game
@@ -178,7 +261,7 @@ angle = 0.05  # Rotation angle in radians
 # This helped... https://math.stackexchange.com/questions/1402362/can-rotations-in-4d-be-given-an-explicit-matrix-form
 
 # Moving the tesseract
-movement_matrix = np.array([[1, 0, 0, 0, 0],
+constant_matrix = np.array([[1, 0, 0, 0, 0],
                             [0, math.cos(angle), -math.sin(angle), 0, 0],
                             [0, math.sin(angle), math.cos(angle),0, 0],
                             [0, 0, 0, 1, 0],
@@ -186,7 +269,7 @@ movement_matrix = np.array([[1, 0, 0, 0, 0],
                            dtype=float)
 
 # Moving the tesseract
-movement_matrix = np.array([[math.sin(angle), -math.cos(angle), 0, 0, 0],
+constant_matrix = np.array([[math.sin(angle), -math.cos(angle), 0, 0, 0],
                             [math.cos(angle), math.sin(angle), 0, 0, 0],
                             [0, 0, 1, 0, 0],
                             [0, 0, 0, 1, 0],
@@ -194,7 +277,7 @@ movement_matrix = np.array([[math.sin(angle), -math.cos(angle), 0, 0, 0],
                            dtype=float)
 
 # Moving the tesseract
-movement_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
+constant_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
                             [0, 1, 0, 0, 0],
                             [0, 0, 1, 0, 0],
                             [math.sin(angle), 0, 0, math.cos(angle), 0],
@@ -227,10 +310,13 @@ def main():
 
         # Updates the players moving matrix based on user input
         keys = pygame.key.get_pressed()
-        tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position_with_matrix(tesseract[0], moveObject(keys))
-
-        # Applies the movement matrix to the tesseract vertices and pivot
+        movement_matrix = moveObject(keys)
         tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position_with_matrix(tesseract[0], movement_matrix)
+
+        # Applies the constant matrix to the tesseract vertices and pivot
+        #tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position_with_matrix(tesseract[0], constant_matrix)
+        
+        
         toRender = sort_high_to_low(tesseract[0]["vertices"], tesseract[0]["faces"])
         
         
@@ -269,23 +355,43 @@ def main():
             x = int(x * factor + WIDTH // 2)
             if y_to_w:
                 y = int(-w * factor + HEIGHT // 2)
+                pygame.draw.circle(screen, WHITE, (x, y), 5)
             else:
                 y = int(-y * factor + HEIGHT // 2)
-            if w_range_shift <= w <= w_range_shift + 1:  # Only render vertices within a certain range of w values
-                pygame.draw.circle(screen, WHITE, (x, y), 5)
+                if w_range_shift <= w <= w_range_shift + 1:  # Only render vertices within a certain range of w values
+                    pygame.draw.circle(screen, WHITE, (x, y), 5)
         
         
+        # Render the edges
+        for edge in tesseract[0]["edges"]:
+            start, end = edge
+            x1, y1, z1, w1, _ = tesseract[0]["vertices"][start]
+            x2, y2, z2, w2, _ = tesseract[0]["vertices"][end]
+            factor1 = 200 / (z1 + 5)
+            factor2 = 200 / (z2 + 5)
+            x1 = int(x1 * factor1 + WIDTH // 2)
+            x2 = int(x2 * factor2 + WIDTH // 2)
+            if y_to_w:
+                y1 = int(-w1 * factor1 + HEIGHT // 2)
+                y2 = int(-w2 * factor2 + HEIGHT // 2)
+                pygame.draw.line(screen, WHITE, (x1, y1), (x2, y2), 1)
+            else:
+                y1 = int(-y1 * factor1 + HEIGHT // 2)
+                y2 = int(-y2 * factor2 + HEIGHT // 2)
+                if w_range_shift <= w1 <= w_range_shift + 1 and w_range_shift <= w2 <= w_range_shift + 1:  # Only render edges within a certain range of w values
+                    pygame.draw.line(screen, WHITE, (x1, y1), (x2, y2), 1)
+
         
         # Display metrics
         metrics = [
             (f"FPS: {int(clock.get_fps())}", 0, 0),
-            (f"Press UP to render w as y, DOWN to render using y coordinate", 0, 30),
+            (f"The dimension you are in is {('xyzw' if not y_to_w else 'xwzy')}", 0, 30),
             (f"The matrix that is currently being applied to the tesseract is:", 0, 60),
                 (f"{movement_matrix[0]}" , 30, 90),
                 (f"{movement_matrix[1]}" , 30, 120),
                 (f"{movement_matrix[2]}" , 30, 150),
                 (f"{movement_matrix[3]}" , 30, 180),
-            (f"So, the tesseract is being rotated in 4D space!" , 0, 210),
+            (f"The pivot point is at: {tesseract[0]["pivot"]}" , 0, 210),
             (f"use [ and ] to shift what range of w you see by 1", 0, 240),
                 (f"The w range is: {w_range_shift} to {w_range_shift + 1}" , 30, 270),
         ]
