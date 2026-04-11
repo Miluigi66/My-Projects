@@ -1,3 +1,5 @@
+import random
+import sys
 import pygame
 import numpy as np
 import math
@@ -13,6 +15,19 @@ pygame.display.set_caption("Testing 4D Matrix Rendering")
 # Define colors
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+
+# Preload fonts to avoid recreating them in the loop
+font_small = pygame.font.SysFont('Arial', 20)
+font_large = pygame.font.SysFont('Arial', 30)
+
+
+BASE_MATRIX = np.array([[1, 0, 0, 0, 0],
+                        [0, 1, 0, 0, 0],
+                        [0, 0, 1, 0, 0],
+                        [0, 0, 0, 1, 0],
+                        [0, 0, 0, 0, 1]], 
+                       dtype=float)
+
 
 tesseract = [{
     # 4D hypercube (tesseract) vertices
@@ -108,6 +123,50 @@ def sort_high_to_low(all_vertices, all_faces):
     return [face for _, face in sorted_faces]
 
 
+def moveObject(key):   
+
+    total_movement_matrix = BASE_MATRIX.copy()
+    
+    # Speed modifiers
+    if key[pygame.K_LSHIFT]:
+        s = .5
+    elif key[pygame.K_LCTRL]:
+        s = .01
+    else:
+        s = .1
+    # Movement y
+    if key[pygame.K_c]:
+        total_movement_matrix[1][4] -= s  # Move down in y-axis
+    if key[pygame.K_SPACE]:
+        total_movement_matrix[1][4] += s  # Move up in y-
+    # Movement z
+    if key[pygame.K_w]:
+        total_movement_matrix[2][4] += s # Move forward in z-axis
+    if key[pygame.K_s]:
+        total_movement_matrix[2][4] -= s # Move backward in z-axis
+    # Movement x
+    if key[pygame.K_a]:
+        total_movement_matrix[0][4] -= s # Move left in x-axis
+    if key[pygame.K_d]:
+        total_movement_matrix[0][4] += s # Move right in x-axis
+    # Movement w    
+    if key[pygame.K_q]:
+        total_movement_matrix[3][4] -= s
+    if key[pygame.K_e]:
+        total_movement_matrix[3][4] += s
+    # Random movement for testing
+    if key[pygame.K_p]:
+        total_movement_matrix[random.randint(0, 4)][4] += random.uniform(-s, s) # Move randomly in x, y, or z-axis
+    if key[pygame.K_ESCAPE]:
+        pygame.quit()
+        sys.exit()  # Quits Game
+    
+    return total_movement_matrix
+            
+    
+
+
+
 """
 What the matrix does when multiplied by a vertex (x, y, z, w, 1 for homogenous coordinates):
 w = 1 for homogenous coordinates
@@ -119,23 +178,38 @@ w = 1 for homogenous coordinates
 ]
 """
 
-BASE_MATRIX = np.array([[1, 0, 0, 0, 0],
-                            [0, 1, 0, 0, 0],
+angle = 0.05  # Rotation angle in radians 
+
+# Moving the tesseract
+movement_matrix = np.array([[1, 0, 0, 0, 0],
+                            [0, math.cos(angle), -math.sin(angle), 0, 0],
+                            [0, math.sin(angle), math.cos(angle),0, 0],
+                            [0, 0, 0, 1, 0],
+                            [0, 0, 0, 0, 1]], 
+                           dtype=float)
+
+# Moving the tesseract
+movement_matrix = np.array([[math.sin(angle), -math.cos(angle), 0, 0, 0],
+                            [math.cos(angle), math.sin(angle), 0, 0, 0],
                             [0, 0, 1, 0, 0],
                             [0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 1]])
+                            [0, 0, 0, 0, 1]], 
+                           dtype=float)
 
-# Moving the cube in the w direction
+# Moving the tesseract
 movement_matrix = np.array([[1, 0, 0, 0, 0],
                             [0, 1, 0, 0, 0],
-                            [0, 0, 1, 0, 0],
-                            [0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 1]])
+                            [0, 0, math.cos(angle), -math.sin(angle), 0],
+                            [0, 0, math.sin(angle), math.cos(angle), 0],
+                            [0, 0, 0, 0, 1]], 
+                           dtype=float)
+
 
 # Main loop
 def main():
     y_to_w = False  # Flag to toggle between y and w for rendering
     running = True
+    clock = pygame.time.Clock()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -149,10 +223,13 @@ def main():
         # Clear the screen
         screen.fill(BLACK)
 
-        #tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position(tesseract[0],0,0,0,.01,0,0)
+        # Updates the players moving matrix based on user input
+        keys = pygame.key.get_pressed()
+        tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position_with_matrix(tesseract[0], moveObject(keys))
+
+        # Applies the movement matrix to the tesseract vertices and pivot
         tesseract[0]["vertices"], tesseract[0]["pivot"] = calculate_position_with_matrix(tesseract[0], movement_matrix)
         toRender = sort_high_to_low(tesseract[0]["vertices"], tesseract[0]["faces"])
-        
         
         
         # Render the faces
@@ -182,9 +259,26 @@ def main():
                 y = int(-y * factor + HEIGHT // 2)
             pygame.draw.circle(screen, WHITE, (x, y), 5)
         
+        
+        
+        # Display metrics
+        metrics = [
+            (f"FPS: {int(clock.get_fps())}", 0, 0),
+            (f"Press UP to render using w coordinate, DOWN to render using y coordinate", 0, 30),
+            (f"The matrix that is currently being applied to the tesseract is:", 0, 60),
+            (f"{movement_matrix[0]}" , 30, 90),
+            (f"{movement_matrix[1]}" , 30, 120),
+            (f"{movement_matrix[2]}" , 30, 150),
+            (f"{movement_matrix[3]}" , 30, 180),
+        ]
+        for text, x, y in metrics:
+            surface = font_small.render(text, False, WHITE)
+            screen.blit(surface, (x, y))
+
         # Update the display
         pygame.display.flip()
-    
+        clock.tick(60)  # Limit to 60 FPS
+
     pygame.quit()
     
 if __name__ == "__main__":
