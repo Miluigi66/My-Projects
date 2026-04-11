@@ -21,13 +21,7 @@ font_small = pygame.font.SysFont('Arial', 20)
 font_large = pygame.font.SysFont('Arial', 30)
 
 
-BASE_MATRIX = np.array([[1, 0, 0, 0, 0],
-                        [0, 1, 0, 0, 0],
-                        [0, 0, 1, 0, 0],
-                        [0, 0, 0, 1, 0],
-                        [0, 0, 0, 0, 1]], 
-                       dtype=float)
-
+BASE_MATRIX = np.identity(5)  # 5x5 identity matrix for 4D transformations (x, y, z, w, homogenous coordinate)
 
 tesseract = [{
     # 4D hypercube (tesseract) vertices
@@ -91,7 +85,8 @@ tesseract = [{
         ((2, 6, 14, 10), (0, 150, 150)),
         ((3, 7, 15, 11), (150, 150, 150))
     ]
-    }]
+}]
+
 
 
 def calculate_position_with_matrix(inputObect, transformation_matrix):
@@ -180,12 +175,14 @@ w = 1 for homogenous coordinates
 
 angle = 0.05  # Rotation angle in radians 
 
+# This helped... https://math.stackexchange.com/questions/1402362/can-rotations-in-4d-be-given-an-explicit-matrix-form
+
 # Moving the tesseract
 movement_matrix = np.array([[1, 0, 0, 0, 0],
                             [0, math.cos(angle), -math.sin(angle), 0, 0],
                             [0, math.sin(angle), math.cos(angle),0, 0],
                             [0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 1]], 
+                            [0, 0, 0, 0, 1]],
                            dtype=float)
 
 # Moving the tesseract
@@ -193,15 +190,15 @@ movement_matrix = np.array([[math.sin(angle), -math.cos(angle), 0, 0, 0],
                             [math.cos(angle), math.sin(angle), 0, 0, 0],
                             [0, 0, 1, 0, 0],
                             [0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 1]], 
+                            [0, 0, 0, 0, 1]],
                            dtype=float)
 
 # Moving the tesseract
-movement_matrix = np.array([[1, 0, 0, 0, 0],
+movement_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
                             [0, 1, 0, 0, 0],
-                            [0, 0, math.cos(angle), -math.sin(angle), 0],
-                            [0, 0, math.sin(angle), math.cos(angle), 0],
-                            [0, 0, 0, 0, 1]], 
+                            [0, 0, 1, 0, 0],
+                            [math.sin(angle), 0, 0, math.cos(angle), 0],
+                            [0, 0, 0, 0, 1]],
                            dtype=float)
 
 
@@ -210,6 +207,7 @@ def main():
     y_to_w = False  # Flag to toggle between y and w for rendering
     running = True
     clock = pygame.time.Clock()
+    w_range_shift = 0  # Variable to shift the range of w values being rendered
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -219,7 +217,11 @@ def main():
                     y_to_w = True
                 elif event.key == pygame.K_DOWN:
                     y_to_w = False
-        
+                if event.key == pygame.K_LEFTBRACKET:
+                    w_range_shift -= 1
+                if event.key == pygame.K_RIGHTBRACKET:
+                    w_range_shift += 1
+
         # Clear the screen
         screen.fill(BLACK)
 
@@ -245,8 +247,20 @@ def main():
                     y = int(-w * factor + HEIGHT // 2)
                 else:
                     y = int(-y * factor + HEIGHT // 2)
+                
                 points.append((x, y))
+                    
             pygame.draw.polygon(screen, color, points)
+                
+                
+            """ USED TO RENDER FACES BASED ON W VALUE RATHER THAN Y VALUE, LOOKS COOL (and how we see it at 1 w plane) BUT IS HARDER TO UNDERSTAND """
+            """
+            if w_range_shift <= w <= w_range_shift + 1:  # Only render faces within a certain range of w values
+                points.append((x, y))
+        if not points == [] and len(points) >= 3:  # Only draw faces that have at least 3 points (to avoid errors with pygame.draw.polygon)
+            pygame.draw.polygon(screen, color, points)
+        """ 
+            
             
         # Renders the vertices
         for vertex in tesseract[0]["vertices"]:
@@ -257,19 +271,23 @@ def main():
                 y = int(-w * factor + HEIGHT // 2)
             else:
                 y = int(-y * factor + HEIGHT // 2)
-            pygame.draw.circle(screen, WHITE, (x, y), 5)
+            if w_range_shift <= w <= w_range_shift + 1:  # Only render vertices within a certain range of w values
+                pygame.draw.circle(screen, WHITE, (x, y), 5)
         
         
         
         # Display metrics
         metrics = [
             (f"FPS: {int(clock.get_fps())}", 0, 0),
-            (f"Press UP to render using w coordinate, DOWN to render using y coordinate", 0, 30),
+            (f"Press UP to render w as y, DOWN to render using y coordinate", 0, 30),
             (f"The matrix that is currently being applied to the tesseract is:", 0, 60),
-            (f"{movement_matrix[0]}" , 30, 90),
-            (f"{movement_matrix[1]}" , 30, 120),
-            (f"{movement_matrix[2]}" , 30, 150),
-            (f"{movement_matrix[3]}" , 30, 180),
+                (f"{movement_matrix[0]}" , 30, 90),
+                (f"{movement_matrix[1]}" , 30, 120),
+                (f"{movement_matrix[2]}" , 30, 150),
+                (f"{movement_matrix[3]}" , 30, 180),
+            (f"So, the tesseract is being rotated in 4D space!" , 0, 210),
+            (f"use [ and ] to shift what range of w you see by 1", 0, 240),
+                (f"The w range is: {w_range_shift} to {w_range_shift + 1}" , 30, 270),
         ]
         for text, x, y in metrics:
             surface = font_small.render(text, False, WHITE)
