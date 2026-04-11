@@ -17,8 +17,8 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
 # Preload fonts to avoid recreating them in the loop
-font_small = pygame.font.SysFont('Arial', 20)
-font_large = pygame.font.SysFont('Arial', 30)
+font_small = pygame.font.SysFont('Arial', HEIGHT // 50)
+font_large = pygame.font.SysFont('Arial', HEIGHT // 20)
 
 
 BASE_MATRIX = np.identity(5)  # 5x5 identity matrix for 4D transformations (x, y, z, w, homogenous coordinate)
@@ -287,19 +287,31 @@ constant_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
 
 # Main loop
 def main():
-    y_to_w = False  # Flag to toggle between y and w for rendering
     running = True
     clock = pygame.time.Clock()
     w_range_shift = 0  # Variable to shift the range of w values being rendered
+    
+    y_to_w = False  # Flag to toggle between y and w for rendering
+    all_vertices_edges_render = False  # Flag to toggle rendering of all vertices and edges regardless of w range
+    render_faces = True
+    render_vertices = True
+    render_edges = True
+    
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    y_to_w = True
-                elif event.key == pygame.K_DOWN:
-                    y_to_w = False
+                if event.key == pygame.K_TAB:
+                    all_vertices_edges_render = not all_vertices_edges_render
+                if event.key == pygame.K_KP_MINUS:
+                    render_faces = not render_faces
+                if event.key == pygame.K_KP_MULTIPLY:
+                    render_vertices = not render_vertices
+                if event.key == pygame.K_KP_DIVIDE:
+                    render_edges = not render_edges
+                if event.key == pygame.K_KP_5:
+                    y_to_w = not y_to_w
                 if event.key == pygame.K_LEFTBRACKET:
                     w_range_shift -= 1
                 if event.key == pygame.K_RIGHTBRACKET:
@@ -321,79 +333,125 @@ def main():
         
         
         # Render the faces
-        for face in toRender:
-            vertices_indices, color = face
-            points = []
-            for index in vertices_indices:
-                x, y, z, w, _ = tesseract[0]["vertices"][index]
-                # Simple perspective projection
-                factor = 200 / (z + 5)  # Adjust the factor for better visualization
-                x = int(x * factor + WIDTH // 2)
-                if y_to_w:
-                    y = int(-w * factor + HEIGHT // 2)
-                else:
-                    y = int(-y * factor + HEIGHT // 2)
-                
-                points.append((x, y))
+        if render_faces:
+            for face in toRender:
+                vertices_indices, color = face
+                #points_to_render = []
+                #points_in_w = []
+                #points_not_in_w = []
+                points = []
+                for index in vertices_indices:
+                    x, y, z, w, _ = tesseract[0]["vertices"][index]
+                    # Simple perspective projection
+                    factor = 200 / (z + 5)  # Adjust the factor for better visualization
+                    x = int(x * factor + WIDTH // 2)
+                    if y_to_w:
+                        y = int(-w * factor + HEIGHT // 2)
+                    else:
+                        y = int(-y * factor + HEIGHT // 2)
+                        #if w_range_shift <= w <= w_range_shift + 1:
+                            #points_in_w.append((x, y))
+                        #else:
+                            #points_not_in_w.append((x, y))
                     
-            pygame.draw.polygon(screen, color, points)
-                
-                
-            """ USED TO RENDER FACES BASED ON W VALUE RATHER THAN Y VALUE, LOOKS COOL (and how we see it at 1 w plane) BUT IS HARDER TO UNDERSTAND """
-            """
-            if w_range_shift <= w <= w_range_shift + 1:  # Only render faces within a certain range of w values
-                points.append((x, y))
-        if not points == [] and len(points) >= 3:  # Only draw faces that have at least 3 points (to avoid errors with pygame.draw.polygon)
-            pygame.draw.polygon(screen, color, points)
-        """ 
+                    points.append((x, y))
             
+                '''Not really working But here for future me to look at 
+                # Finds how much of w should be rendered based on how many points are in the w range vs not in the w range, then renders that percentage of the face
+                if (not points_in_w == []) and (not points_not_in_w == []):
+                    percentage_in_w = len(points_in_w) / (len(points_in_w) + len(points_not_in_w))
+                    points_to_render = points_in_w + points_not_in_w[:int((1 - percentage_in_w) * len(points_not_in_w))]
+                    pygame.draw.polygon(screen, color, points_to_render)
+                elif not points_in_w == []:
+                    pass  # Don't render faces that are fully in the w range
+                elif not points_not_in_w == []:
+                    points_to_render = points_not_in_w
+                    pygame.draw.polygon(screen, color, points_to_render)
+                '''
+                pygame.draw.polygon(screen, color, points)
+        
             
         # Renders the vertices
-        for vertex in tesseract[0]["vertices"]:
-            x, y, z, w, _ = vertex
-            factor = 200 / (z + 5)
-            x = int(x * factor + WIDTH // 2)
-            if y_to_w:
-                y = int(-w * factor + HEIGHT // 2)
-                pygame.draw.circle(screen, WHITE, (x, y), 5)
-            else:
-                y = int(-y * factor + HEIGHT // 2)
-                if w_range_shift <= w <= w_range_shift + 1:  # Only render vertices within a certain range of w values
+        if render_vertices:
+            for vertex in tesseract[0]["vertices"]:
+                x, y, z, w, _ = vertex
+                factor = 200 / (z + 5)
+                x = int(x * factor + WIDTH // 2)
+                if all_vertices_edges_render:
+                    y = int(-y * factor + HEIGHT // 2)
                     pygame.draw.circle(screen, WHITE, (x, y), 5)
+                else:
+                    y = int(-y * factor + HEIGHT // 2)
+                    if w_range_shift <= w <= w_range_shift + 1:  # Only render vertices within a certain range of w values
+                        pygame.draw.circle(screen, WHITE, (x, y), 5)
         
         
         # Render the edges
-        for edge in tesseract[0]["edges"]:
-            start, end = edge
-            x1, y1, z1, w1, _ = tesseract[0]["vertices"][start]
-            x2, y2, z2, w2, _ = tesseract[0]["vertices"][end]
-            factor1 = 200 / (z1 + 5)
-            factor2 = 200 / (z2 + 5)
-            x1 = int(x1 * factor1 + WIDTH // 2)
-            x2 = int(x2 * factor2 + WIDTH // 2)
-            if y_to_w:
-                y1 = int(-w1 * factor1 + HEIGHT // 2)
-                y2 = int(-w2 * factor2 + HEIGHT // 2)
-                pygame.draw.line(screen, WHITE, (x1, y1), (x2, y2), 1)
-            else:
-                y1 = int(-y1 * factor1 + HEIGHT // 2)
-                y2 = int(-y2 * factor2 + HEIGHT // 2)
-                if w_range_shift <= w1 <= w_range_shift + 1 and w_range_shift <= w2 <= w_range_shift + 1:  # Only render edges within a certain range of w values
+        if render_edges:
+            for edge in tesseract[0]["edges"]:
+                start, end = edge
+                x1, y1, z1, w1, _ = tesseract[0]["vertices"][start]
+                x2, y2, z2, w2, _ = tesseract[0]["vertices"][end]
+                factor1 = 200 / (z1 + 5)
+                factor2 = 200 / (z2 + 5)
+                x1 = int(x1 * factor1 + WIDTH // 2)
+                x2 = int(x2 * factor2 + WIDTH // 2)
+                if all_vertices_edges_render:
+                    y1 = int(-y1 * factor1 + HEIGHT // 2)
+                    y2 = int(-y2 * factor2 + HEIGHT // 2)
                     pygame.draw.line(screen, WHITE, (x1, y1), (x2, y2), 1)
+                else:
+                    y1 = int(-y1 * factor1 + HEIGHT // 2)
+                    y2 = int(-y2 * factor2 + HEIGHT // 2)
+                    
+                    w_min = w_range_shift
+                    w_max = w_range_shift + 1
+                    w1_in = w_min <= w1 <= w_max
+                    w2_in = w_min <= w2 <= w_max
+                    
+                    if w1_in and w2_in:
+                        # Both endpoints in range
+                        pygame.draw.line(screen, WHITE, (x1, y1), (x2, y2), 1)
+                    elif w1_in and not w2_in:
+                        # w1 in range, w2 out - interpolate to boundary
+                        boundary_w = w_max if w2 > w_max else w_min
+                        if w1 != w2:
+                            t = (boundary_w - w1) / (w2 - w1)
+                            x2_new = int(x1 + t * (x2 - x1))
+                            y2_new = int(y1 + t * (y2 - y1))
+                        else:
+                            x2_new, y2_new = x2, y2
+                        pygame.draw.line(screen, WHITE, (x1, y1), (x2_new, y2_new), 1)
+                    elif w2_in and not w1_in:
+                        # w2 in range, w1 out - interpolate to boundary
+                        boundary_w = w_max if w1 > w_max else w_min
+                        if w1 != w2:
+                            t = (boundary_w - w2) / (w1 - w2)
+                            x1_new = int(x2 + t * (x1 - x2))
+                            y1_new = int(y2 + t * (y1 - y2))
+                        else:
+                            x1_new, y1_new = x1, y1
+                        pygame.draw.line(screen, WHITE, (x1_new, y1_new), (x2, y2), 1)
 
         
         # Display metrics
         metrics = [
             (f"FPS: {int(clock.get_fps())}", 0, 0),
-            (f"The dimension you are in is {('xyzw' if not y_to_w else 'xwzy')}", 0, 30),
-            (f"The matrix that is currently being applied to the tesseract is:", 0, 60),
-                (f"{movement_matrix[0]}" , 30, 90),
-                (f"{movement_matrix[1]}" , 30, 120),
-                (f"{movement_matrix[2]}" , 30, 150),
-                (f"{movement_matrix[3]}" , 30, 180),
-            (f"The pivot point is at: {tesseract[0]["pivot"]}" , 0, 210),
-            (f"use [ and ] to shift what range of w you see by 1", 0, 240),
-                (f"The w range is: {w_range_shift} to {w_range_shift + 1}" , 30, 270),
+            (f"The dimension you are in is {('xyzw' if not y_to_w else 'xwzy')}", 0, 15),
+            (f"The matrix that is currently being applied to the tesseract is:", 0, 30),
+                (f"{movement_matrix[0]}" , 15, 45),
+                (f"{movement_matrix[1]}" , 15, 60),
+                (f"{movement_matrix[2]}" , 15, 75),
+                (f"{movement_matrix[3]}" , 15, 90),
+            (f"The pivot point is at: {tesseract[0]["pivot"]}" , 0, 105),
+            (f"Key bindings:", 0, 120),
+            (f"use [ and ] to shift what range of w you see by 1", 15, 135),
+                (f"The w range is: {w_range_shift} to {w_range_shift + 1}" , 15, 150),
+                    (f"L_TAB: toggle rendering of all vertices and edges (regardless of w range): {'ON' if all_vertices_edges_render else 'OFF'}", 30, 165),
+                (f"Press: NP_- : toggle faces: {'ON' if render_faces else 'OFF'}", 15, 180),
+                (f"Press: NP_* : toggle vertices: {'ON' if render_vertices else 'OFF'}", 15, 195),
+                (f"Press: NP_/ : toggle edges: {'ON' if render_edges else 'OFF'}", 15, 210),
+                (f"Press: NP_5 : toggle between using y or w for rendering: {'w' if y_to_w else 'y'}", 15, 225),
         ]
         for text, x, y in metrics:
             surface = font_small.render(text, False, WHITE)
