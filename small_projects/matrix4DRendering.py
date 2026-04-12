@@ -23,6 +23,8 @@ font_large = pygame.font.SysFont('Arial', HEIGHT // 20)
 
 BASE_MATRIX = np.identity(5)  # 5x5 identity matrix for 4D transformations (x, y, z, w, homogenous coordinate)
 
+#tesseract
+"""
 tesseract = [{
     # 4D hypercube (tesseract) vertices
         "vertices": [
@@ -86,8 +88,74 @@ tesseract = [{
         ((3, 7, 15, 11), (150, 150, 150))
     ]
 }]
+"""
+# https://paulbourke.net/geometry/hyperspace/ helped to get structures of 4D objects
+#hexadecachoron
+tesseract = [{
+    # 4D cross-polytope (hexadecachoron) vertices
+    "vertices": [
+        np.array([[-2], [0], [0], [0], [1]]),
+        np.array([[0], [-2], [0], [0], [1]]),
+        np.array([[0], [0], [-2], [0], [1]]),
+        np.array([[0], [0], [0], [-2], [1]]),
+        np.array([[2], [0], [0], [0], [1]]),
+        np.array([[0], [2], [0], [0], [1]]),
+        np.array([[0], [0], [2], [0], [1]]),
+        np.array([[0], [0], [0], [2], [1]])
+    ],
 
+    # Pivot point
+    "pivot": np.array([[0], [0], [0], [0], [1]], dtype=float),
 
+    # Edges (24)
+    "edges": [
+        (5, 6), (6, 7), (7, 5),
+        (4, 6), (7, 4), (4, 5),
+        (0, 6), (7, 0), (0, 5),
+        (1, 6), (7, 1), (1, 4),
+        (0, 1), (2, 5), (7, 2),
+        (2, 4), (0, 2), (1, 2),
+        (3, 5), (6, 3), (3, 4),
+        (0, 3), (1, 3), (2, 3)
+    ],
+
+    # Faces (32 triangular faces)
+    # (each tuple is a triangle, color added for visualization)
+    "faces": [
+        ((5, 6, 7), (255, 0, 0)),
+        ((4, 6, 7), (0, 255, 0)),
+        ((4, 5, 7), (0, 0, 255)),
+        ((4, 5, 6), (255, 255, 0)),
+        ((0, 6, 7), (255, 0, 255)),
+        ((0, 5, 7), (0, 255, 255)),
+        ((0, 5, 6), (128, 0, 0)),
+        ((1, 6, 7), (0, 128, 0)),
+        ((1, 4, 7), (0, 0, 128)),
+        ((1, 4, 6), (128, 128, 0)),
+        ((0, 1, 7), (128, 0, 128)),
+        ((0, 1, 6), (0, 128, 128)),
+        ((2, 5, 7), (200, 100, 0)),
+        ((2, 4, 7), (100, 200, 0)),
+        ((2, 4, 5), (0, 200, 100)),
+        ((0, 2, 7), (200, 0, 100)),
+        ((0, 2, 5), (100, 0, 200)),
+        ((1, 2, 7), (0, 100, 200)),
+        ((1, 2, 4), (200, 100, 50)),
+        ((0, 1, 2), (100, 200, 50)),
+        ((3, 5, 6), (150, 150, 0)),
+        ((3, 4, 6), (150, 0, 150)),
+        ((3, 4, 5), (0, 150, 150)),
+        ((0, 3, 6), (150, 150, 150)),
+        ((0, 3, 5), (50, 150, 150)),
+        ((1, 3, 6), (150, 50, 150)),
+        ((1, 3, 4), (150, 150, 50)),
+        ((0, 1, 3), (50, 50, 150)),
+        ((2, 3, 5), (200, 150, 50)),
+        ((2, 3, 4), (50, 200, 150)),
+        ((0, 2, 3), (150, 50, 200)),
+        ((1, 2, 3), (50, 150, 200))
+    ]
+}]
 
 def calculate_position_with_matrix(inputObect, transformation_matrix):
     
@@ -283,6 +351,7 @@ constant_matrix = np.array([[math.cos(angle), 0, 0, -math.sin(angle), 0],
                             [math.sin(angle), 0, 0, math.cos(angle), 0],
                             [0, 0, 0, 0, 1]],
                            dtype=float)
+
 
 
 # Main loop
